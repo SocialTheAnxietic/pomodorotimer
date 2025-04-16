@@ -1,9 +1,14 @@
+// Duration constants (in seconds)
+const POMODORO_DURATION = 50 * 60;
+const SHORT_BREAK_DURATION = 5 * 60;
+const LONG_BREAK_DURATION = 10 * 60;
+
 // Global variables
-let timeLeft = 50 * 60; // seconds
-let timerInterval;
+let timeLeft = POMODORO_DURATION;
+let timerInterval = null;
 let currentInterval = 'pomodoro';
-let backgroundColor = '#F1F1EF'; // Default background color
-let fontColor = '#37352F'; // Default font color
+let backgroundColor = '#F1F1EF';
+let fontColor = '#37352F';
 
 // DOM elements
 const timeLeftEl = document.getElementById('time-left');
@@ -19,26 +24,29 @@ const backgroundColorSelect = document.getElementById('background-color');
 const fontColorSelect = document.getElementById('font-color');
 const saveBtn = document.getElementById('save-btn');
 
-// Event listeners for interval buttons
+// Interval button click listeners
 pomodoroIntervalBtn.addEventListener('click', () => {
   currentInterval = 'pomodoro';
-  timeLeft = 50 * 60;
+  timeLeft = POMODORO_DURATION;
   updateTimeLeftTextContent();
+  setActiveIntervalButton();
 });
 
 shortBreakIntervalBtn.addEventListener('click', () => {
   currentInterval = 'short-break';
-  timeLeft = 5 * 60;
+  timeLeft = SHORT_BREAK_DURATION;
   updateTimeLeftTextContent();
+  setActiveIntervalButton();
 });
 
 longBreakIntervalBtn.addEventListener('click', () => {
   currentInterval = 'long-break';
-  timeLeft = 10 * 60;
+  timeLeft = LONG_BREAK_DURATION;
   updateTimeLeftTextContent();
+  setActiveIntervalButton();
 });
 
-// Event listener for start/stop button
+// Start/Stop button
 startStopBtn.addEventListener('click', () => {
   if (startStopBtn.textContent === 'Start') {
     startTimer();
@@ -48,102 +56,100 @@ startStopBtn.addEventListener('click', () => {
   }
 });
 
-// Event listener for reset button
+// Reset button
 resetBtn.addEventListener('click', () => {
   stopTimer();
   if (currentInterval === 'pomodoro') {
-    timeLeft = 50 * 60;
+    timeLeft = POMODORO_DURATION;
   } else if (currentInterval === 'short-break') {
-    timeLeft = 5 * 60;
+    timeLeft = SHORT_BREAK_DURATION;
   } else {
-    timeLeft = 10 * 60;
+    timeLeft = LONG_BREAK_DURATION;
   }
   updateTimeLeftTextContent();
   startStopBtn.textContent = 'Start';
 });
 
-// Event listener for settings button
+// Settings modal open/close
 settingsBtn.addEventListener('click', () => {
   settingsModal.style.display = 'flex';
 });
 
-// Event listener for close button in the settings modal
 closeModalBtn.addEventListener('click', () => {
   settingsModal.style.display = 'none';
 });
 
-// Event listener for save button in the settings modal
+// Save settings
 saveBtn.addEventListener('click', () => {
   const newBackgroundColor = backgroundColorSelect.value;
   const newFontColor = fontColorSelect.value;
 
-  // Save preferences to localStorage
   localStorage.setItem('backgroundColor', newBackgroundColor);
   localStorage.setItem('fontColor', newFontColor);
 
-  // Apply the new saved preferences
   applyUserPreferences();
-
-  // Close the modal after saving preferences
   settingsModal.style.display = 'none';
 });
 
-// Function to start the timer
+// Start the timer
 function startTimer() {
+  if (timerInterval) return;
+
   timerInterval = setInterval(() => {
     timeLeft--;
     updateTimeLeftTextContent();
+
     if (timeLeft === 0) {
       clearInterval(timerInterval);
-      if (currentInterval === 'pomodoro') {
-        timeLeft = 5 * 60;
-        currentInterval = 'short-break';
-        startTimer();
-      } else if (currentInterval === 'short-break') {
-        timeLeft = 10 * 60;
-        currentInterval = 'long-break';
-        startTimer();
-      } else {
-        timeLeft = 50 * 60;
-        currentInterval = 'pomodoro';
-      }
+      timerInterval = null;
+      switchInterval();
     }
   }, 1000);
 }
 
-// Function to stop the timer
+// Stop the timer
 function stopTimer() {
   clearInterval(timerInterval);
+  timerInterval = null;
   startStopBtn.textContent = 'Start';
 }
 
-// Function to update the time left text content
+// Switch to the next interval
+function switchInterval() {
+  if (currentInterval === 'pomodoro') {
+    currentInterval = 'short-break';
+    timeLeft = SHORT_BREAK_DURATION;
+  } else if (currentInterval === 'short-break') {
+    currentInterval = 'long-break';
+    timeLeft = LONG_BREAK_DURATION;
+  } else {
+    currentInterval = 'pomodoro';
+    timeLeft = POMODORO_DURATION;
+  }
+  updateTimeLeftTextContent();
+  setActiveIntervalButton();
+  startTimer();
+}
+
+// Update timer text
 function updateTimeLeftTextContent() {
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
   timeLeftEl.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 
-// Function to apply the user's saved preferences
+// Apply saved preferences
 function applyUserPreferences() {
-  // Retrieve user preferences from localStorage
   const savedBackgroundColor = localStorage.getItem('backgroundColor');
   const savedFontColor = localStorage.getItem('fontColor');
 
-  // Apply the preferences if they exist in localStorage
-  if (savedBackgroundColor) {
-    backgroundColor = savedBackgroundColor;
-  }
+  if (savedBackgroundColor) backgroundColor = savedBackgroundColor;
+  if (savedFontColor) fontColor = savedFontColor;
 
-  if (savedFontColor) {
-    fontColor = savedFontColor;
-  }
-
-  // Apply the preferences to the Pomodoro Timer widget
   document.body.style.backgroundColor = backgroundColor;
   document.body.style.color = fontColor;
   timeLeftEl.style.color = fontColor;
-  // Update the buttons' font and background color
+
   const buttons = document.querySelectorAll('.interval-btn, #start-stop-btn, #reset-btn, #settings-btn');
   buttons.forEach((button) => {
     button.style.color = fontColor;
@@ -152,5 +158,22 @@ function applyUserPreferences() {
   });
 }
 
-// Apply user preferences on page load
+// Set active interval button (optional: style `.active` in CSS)
+function setActiveIntervalButton() {
+  [pomodoroIntervalBtn, shortBreakIntervalBtn, longBreakIntervalBtn].forEach(btn =>
+    btn.classList.remove('active')
+  );
+
+  if (currentInterval === 'pomodoro') {
+    pomodoroIntervalBtn.classList.add('active');
+  } else if (currentInterval === 'short-break') {
+    shortBreakIntervalBtn.classList.add('active');
+  } else {
+    longBreakIntervalBtn.classList.add('active');
+  }
+}
+
+// Init
 applyUserPreferences();
+updateTimeLeftTextContent();
+setActiveIntervalButton();
